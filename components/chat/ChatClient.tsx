@@ -38,8 +38,11 @@ import ProfileImageViewer from "@/components/ui/ProfileImageViewer";
 import ModelSelector from "@/components/ui/ModelSelector";
 import { getCompanion, getCharacter, type Companion } from "@/data/companions";
 import { useChatStore } from "@/store/chatStore";
+import { useSettingsStore } from "@/store/settingsStore";
 import { textToSpeech } from "@/lib/voice/tts";
 import type { VoiceConfig } from "@/lib/types";
+import { THEMES, FONTS } from "@/store/settingsStore";
+import { Palette, Type, Moon, Sun, Save, Download, RotateCcw } from "lucide-react";
 
 type Msg = {
   id: string;
@@ -83,7 +86,6 @@ function loadStoredMessages(id: string): Msg[] | null {
 
 function storeMessages(id: string, messages: Msg[]): void {
   try {
-    // Cap the stored thread so localStorage never fills up.
     window.localStorage.setItem(threadKey(id), JSON.stringify(messages.slice(-200)));
   } catch {
     /* quota or private mode — the live thread still works */
@@ -129,7 +131,27 @@ function customPersonaPayload(c: Companion) {
 export default function ChatClient({ characterId }: { characterId: string }) {
   const router = useRouter();
 
-  // Settings that live in the shared chat store
+  // Settings from persistent store
+  const {
+    themeIndex,
+    setThemeIndex,
+    fontIndex,
+    setFontIndex,
+    darkMode,
+    setDarkMode,
+    adultMode,
+    setAdultMode,
+    language,
+    setLanguage,
+    selectedProvider,
+    setSelectedProvider,
+    selectedModel,
+    setSelectedModel,
+    saveAll,
+    resetToDefaults,
+  } = useSettingsStore();
+
+  // Chat store settings
   const nsfwMode = useChatStore((s) => s.nsfwMode);
   const toggleNsfwMode = useChatStore((s) => s.toggleNsfwMode);
   const voiceEnabled = useChatStore((s) => s.voiceEnabled);
@@ -155,6 +177,13 @@ export default function ChatClient({ characterId }: { characterId: string }) {
   const [ageConfirmed, setAgeConfirmed] = useState<boolean | null>(null);
   const [contentPref, setContentPref] = useState<"sweet" | "steamy">("sweet");
   const [settingsNotice, setSettingsNotice] = useState<string | null>(null);
+
+  // Sync adultMode with chat store nsfwMode
+  useEffect(() => {
+    if (adultMode !== nsfwMode) {
+      toggleNsfwMode();
+    }
+  }, [adultMode, nsfwMode, toggleNsfwMode]);
 
   // Listen for age confirmation changes from other tabs/components (e.g., AgeGate)
   useEffect(() => {
@@ -711,9 +740,9 @@ export default function ChatClient({ characterId }: { characterId: string }) {
             aria-label="Close settings"
             onClick={() => setSettingsOpen(false)}
           />
-          <div className="chat-scroll relative h-full w-full max-w-md overflow-y-auto border-l border-white/10 bg-ink-2 p-6">
+          <div className="chat-scroll relative h-full w-full max-w-2xl overflow-y-auto border-l border-white/10 bg-ink-2 p-6">
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-2xl text-cream">This room, your rules</h2>
+              <h2 className="font-display text-2xl text-cream">Settings</h2>
               <button
                 onClick={() => setSettingsOpen(false)}
                 className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-cream-dim hover:text-cream"
@@ -723,130 +752,196 @@ export default function ChatClient({ characterId }: { characterId: string }) {
               </button>
             </div>
 
-            {/* Language — automatic by design */}
+            {/* Theme Colors — 20+ themes */}
             <fieldset className="mt-6">
               <legend className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-cream-dim">
-                <Languages size={12} aria-hidden="true" /> Conversation language
+                <Palette size={12} aria-hidden="true" /> Color Theme ({THEMES.length} themes)
               </legend>
-              <div className="mt-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs font-semibold text-cream">Auto — she mirrors what you write</p>
-                <p className="mt-1.5 text-[11px] leading-5 text-cream-dim">
-                  Reply in English, Tamil, Telugu, Tanglish, Hinglish or any mix — the reply comes back in the same
-                  language and script, code-switching included. Quality follows the model, and we never claim fluency
-                  we can&apos;t guarantee.
-                </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {THEMES.map((theme, idx) => (
+                  <button
+                    key={theme.name}
+                    onClick={() => setThemeIndex(idx)}
+                    className={`relative rounded-2xl border p-3 transition-all ${themeIndex === idx ? "border-rose/60 bg-rose/10 ring-2 ring-rose/40" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}
+                    style={{
+                      background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+                      color: theme.text,
+                    }}
+                  >
+                    <span className="text-sm font-semibold">{theme.name}</span>
+                    <div className="mt-2 flex gap-1">
+                      <span className="w-4 h-4 rounded" style={{ background: theme.primary }} title="Primary" />
+                      <span className="w-4 h-4 rounded" style={{ background: theme.accent }} title="Accent" />
+                      <span className="w-4 h-4 rounded" style={{ background: theme.text }} title="Text" />
+                    </div>
+                    {themeIndex === idx && <Check size={16} className="absolute top-2 right-2 text-rose" aria-hidden="true" />}
+                  </button>
+                ))}
               </div>
             </fieldset>
 
-            {/* Adult mode */}
+            {/* Fonts — 10+ fonts */}
+            <fieldset className="mt-6">
+              <legend className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-cream-dim">
+                <Type size={12} aria-hidden="true" /> Font ({FONTS.length} fonts)
+              </legend>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {FONTS.map((font, idx) => (
+                  <button
+                    key={font.name}
+                    onClick={() => setFontIndex(idx)}
+                    className={`rounded-2xl border p-3 text-left transition-colors ${fontIndex === idx ? "border-rose/60 bg-rose/10" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}
+                    style={{ fontFamily: font.sans }}
+                  >
+                    <span className="font-semibold text-cream" style={{ fontFamily: font.display }}>{font.name}</span>
+                    <span className="mt-1 block text-[10px] text-cream-dim">The quick brown fox jumps over the lazy dog</span>
+                    {fontIndex === idx && <Check size={16} className="absolute top-2 right-2 text-rose" aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            {/* Dark / Light Mode */}
+            <fieldset className="mt-6">
+              <legend className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-cream-dim">
+                {darkMode ? <Moon size={12} aria-hidden="true" /> : <Sun size={12} aria-hidden="true" />} Appearance
+              </legend>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <button
+                  onClick={() => setDarkMode(true)}
+                  className={`rounded-2xl border p-4 text-left transition-colors ${darkMode ? "border-rose/60 bg-rose/10" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Moon size={20} className="text-gold" aria-hidden="true" />
+                    <div>
+                      <span className="font-semibold text-cream">Dark Mode</span>
+                      <span className="mt-1 block text-[10px] text-cream-dim">Easy on the eyes, default theme</span>
+                    </div>
+                  </div>
+                  {darkMode && <Check size={16} className="ml-auto text-rose" aria-hidden="true" />}
+                </button>
+                <button
+                  onClick={() => setDarkMode(false)}
+                  className={`rounded-2xl border p-4 text-left transition-colors ${!darkMode ? "border-rose/60 bg-rose/10" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Sun size={20} className="text-gold" aria-hidden="true" />
+                    <div>
+                      <span className="font-semibold text-cream">Light Mode</span>
+                      <span className="mt-1 block text-[10px] text-cream-dim">Bright, clean appearance</span>
+                    </div>
+                  </div>
+                  {!darkMode && <Check size={16} className="ml-auto text-rose" aria-hidden="true" />}
+                </button>
+              </div>
+            </fieldset>
+
+            {/* Adult Mode (18+) — ON/OFF with age gate */}
             <fieldset className="mt-6 rounded-2xl border border-rose/20 bg-rose/5 p-4">
-              <legend className="sr-only">Adult roleplay</legend>
-              <div className="flex items-start justify-between gap-4">
+              <legend className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-rose">
+                <Flame size={12} aria-hidden="true" /> Adult Roleplay · 18+
+              </legend>
+              <div className="mt-3 flex items-center justify-between">
                 <div>
-                  <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-rose">
-                    <Flame size={12} aria-hidden="true" /> Adult roleplay · 18+
-                  </p>
-                  <p className="mt-1.5 text-[11px] leading-5 text-cream-dim">
-                    For verified-age adults. Everyone in the scene — you and the character — is an adult,
-                    fictional and consenting. Hard limits, no exceptions: no minors, no coercion, no
-                    non-consent, no real people. Content may be suggestive and romantic; provider safety
-                    policies still apply, and anything beyond them fades to black.
+                  <p className="font-semibold text-cream">Adult Content</p>
+                  <p className="mt-1 text-[11px] leading-5 text-cream-dim">
+                    Enables explicit romantic/sexual content. Requires age confirmation.
+                    Provider safety policies still apply.
                   </p>
                 </div>
                 <button
                   role="switch"
-                  aria-checked={nsfwMode}
+                  aria-checked={adultMode}
                   aria-label="Toggle adult roleplay mode"
-                  onClick={toggleAdultMode}
+                  onClick={() => {
+                    if (!adultMode && !ageConfirmed) {
+                      setSettingsNotice("Please confirm age first — tap the button below.");
+                      return;
+                    }
+                    setAdultMode(!adultMode);
+                    setSettingsNotice(null);
+                  }}
                   className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors ${
-                    nsfwMode ? "border-rose/60 bg-rose-deep/60" : "border-white/15 bg-white/5"
+                    adultMode ? "border-rose/60 bg-rose-deep/60" : "border-white/15 bg-white/5"
                   }`}
                 >
-                  <span
-                    className={`absolute top-1 h-5 w-5 rounded-full bg-cream shadow transition-all ${
-                      nsfwMode ? "left-6" : "left-1"
-                    }`}
-                  />
+                  <span className={`absolute top-1 h-5 w-5 rounded-full bg-cream shadow transition-all ${adultMode ? "left-6" : "left-1"}`} />
                 </button>
               </div>
-              {!nsfwMode && !ageConfirmed && (
+              {!ageConfirmed && (
                 <button
                   onClick={confirmAgeAndEnable}
                   className="mt-3 inline-flex items-center gap-2 rounded-xl border border-rose/40 bg-rose/10 px-4 py-2 text-[11px] font-semibold text-rose hover:bg-rose/15"
                 >
                   <ShieldCheck size={12} aria-hidden="true" />
-                  I&apos;m 18+ — confirm &amp; enable
+                  I&apos;m 18+ — confirm & enable
                 </button>
               )}
             </fieldset>
 
-            {/* Model */}
+            {/* Language */}
             <fieldset className="mt-6">
               <legend className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-cream-dim">
-                <Cpu size={12} aria-hidden="true" /> Model
+                <Languages size={12} aria-hidden="true" /> Language
+              </legend>
+              <div className="mt-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs font-semibold text-cream">Auto-detect (default)</p>
+                <p className="mt-1.5 text-[11px] leading-5 text-cream-dim">
+                  She mirrors your language exactly — Tamil, Telugu, Tanglish, Hinglish, Hindi, English, or any mix.
+                  Script and code-switching preserved. Quality varies by model; we never claim false fluency.
+                </p>
+              </div>
+            </fieldset>
+
+            {/* LLM Models */}
+            <fieldset className="mt-6">
+              <legend className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-cream-dim">
+                <Cpu size={12} aria-hidden="true" /> LLM Model
               </legend>
               <div className="mt-2">
                 <ModelSelector />
               </div>
               <p className="mt-2 text-[10px] leading-4 text-cream-dim/80">
-                Which engine answers her. Adult mode pins to a designated model automatically.
+                15 models available (10 NSFW + 5 SFW). Adult mode uses NSFW models automatically.
               </p>
             </fieldset>
 
-            {/* Content preferences */}
-            <fieldset className="mt-6">
-              <legend className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-cream-dim">
-                <Flower2 size={12} aria-hidden="true" /> Romance dial
-              </legend>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {([
-                  { id: "sweet", label: "Sweet & gentle", sub: "Warmth, longing, fade-to-black" },
-                  { id: "steamy", label: "Steamy (18+)", sub: "Suggestive, still within policy" },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => setContentPref(opt.id)}
-                    aria-pressed={contentPref === opt.id}
-                    className={`rounded-2xl border p-3 text-left transition-colors ${
-                      contentPref === opt.id
-                        ? "border-rose/50 bg-rose/10"
-                        : "border-white/10 bg-white/[0.03] hover:border-white/20"
-                    }`}
-                  >
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-cream">
-                      {contentPref === opt.id && <Check size={12} className="text-rose" aria-hidden="true" />}
-                      {opt.label}
-                    </span>
-                    <span className="mt-1 block text-[10px] leading-4 text-cream-dim">{opt.sub}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-[10px] leading-4 text-cream-dim/75">
-                Session preference only — stored in this tab; everything explicit stays behind the 18+ switch above.
-              </p>
-            </fieldset>
-
-            {/* Danger zone */}
+            {/* Save / Reset / Danger Zone */}
             <div className="mt-6 rounded-2xl border border-white/8 p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cream-dim/70">Housekeeping</p>
-              <button
-                onClick={() => { setSettingsOpen(false); setResetOpen(true); }}
-                className="mt-3 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs text-cream-dim hover:bg-white/5 hover:text-cream"
-              >
-                <Trash2 size={14} aria-hidden="true" /> Reset this conversation (wipe messages)
-              </button>
-              <button
-                onClick={() => { setSettingsOpen(false); setLeaveOpen(true); }}
-                className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs text-cream-dim hover:bg-white/5 hover:text-cream"
-              >
-                <LogOut size={14} aria-hidden="true" /> Leave (everything stays as-is)
-              </button>
-              <Link
-                href="/settings"
-                className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs text-cream-dim hover:bg-white/5 hover:text-cream"
-              >
-                <Flag size={14} aria-hidden="true" /> Export or permanently delete my data →
-              </Link>
+              <div className="flex gap-3 mb-4">
+                <button
+                  onClick={() => { saveAll(); setSettingsNotice("Settings saved permanently."); }}
+                  className="btn-candle flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold"
+                >
+                  <Save size={14} aria-hidden="true" /> Save All Settings
+                </button>
+                <button
+                  onClick={() => { resetToDefaults(); setSettingsNotice("Reset to defaults."); }}
+                  className="btn-ghost flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-cream"
+                >
+                  <RotateCcw size={14} aria-hidden="true" /> Reset Defaults
+                </button>
+              </div>
+              <div className="border-t border-white/5 pt-4 space-y-2">
+                <button
+                  onClick={() => { setSettingsOpen(false); setResetOpen(true); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs text-cream-dim hover:bg-white/5 hover:text-cream"
+                >
+                  <Trash2 size={14} aria-hidden="true" /> Reset this conversation (wipe messages)
+                </button>
+                <button
+                  onClick={() => { setSettingsOpen(false); setLeaveOpen(true); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs text-cream-dim hover:bg-white/5 hover:text-cream"
+                >
+                  <LogOut size={14} aria-hidden="true" /> Leave (everything stays as-is)
+                </button>
+                <Link
+                  href="/settings"
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs text-cream-dim hover:bg-white/5 hover:text-cream"
+                >
+                  <Flag size={14} aria-hidden="true" /> Export or permanently delete my data →
+                </Link>
+              </div>
               {settingsNotice && (
                 <p role="status" className="mt-3 flex items-start gap-1.5 text-[10px] leading-4 text-gold">
                   <Info size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
