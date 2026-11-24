@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Sparkles, Wand2, Loader2, ShieldCheck, User, Palette, ScrollText,
-  Info, Check, ArrowRight, ChevronDown, Zap,
+  Info, Check, ArrowRight, ChevronDown, Zap, Download,
 } from "lucide-react";
 import CompanionAvatar from "@/components/avatar/CompanionAvatar";
 import { ARCHETYPES, buildCustomCompanion, saveCustomCompanion, type Archetype } from "@/data/companions";
@@ -319,6 +319,20 @@ export default function CreatePage() {
             </button>
             {aiNotice && (
               <p role="status" className="mt-2 rounded-xl border border-gold/20 bg-gold/5 p-2.5 text-[10px] leading-4 text-gold/90">{aiNotice}</p>
+            )}
+
+            {aiImage && (
+              <div className="mt-3 flex items-center gap-2">
+                <a
+                  href={aiImage}
+                  download={`${name.trim() || "companion"}-portrait.jpg`}
+                  className="btn-ghost flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-cream"
+                >
+                  <Download size={12} aria-hidden="true" />
+                  Download image
+                </a>
+                <span className="text-[10px] text-cream-dim/60">Right-click → Save also works</span>
+              </div>
             )}
 
             {error && <p role="alert" className="mt-3 rounded-xl border border-rose/30 bg-rose/10 p-3 text-[11px] text-rose">{error}</p>}

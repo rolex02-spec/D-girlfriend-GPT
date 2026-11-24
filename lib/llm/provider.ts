@@ -37,11 +37,21 @@ export const availableModels: ModelInfo[] = [
   // NSFW-CAPABLE (Llama 3.1 - tested working with erotica framing)
   { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B (NSFW)', provider: 'openrouter', free: true, uncensored: true, description: 'Best for adult content' },
   { id: 'meta-llama/llama-3.1-70b-instruct', name: 'Llama 3.1 70B (NSFW)', provider: 'openrouter', free: true, uncensored: true, description: 'Larger, better quality NSFW' },
+  { id: 'meta-llama/llama-3.2-3b-instruct', name: 'Llama 3.2 3B (NSFW)', provider: 'openrouter', free: true, uncensored: true, description: 'Fast, lightweight NSFW' },
+  { id: 'meta-llama/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 11B Vision (NSFW)', provider: 'openrouter', free: true, uncensored: true, description: 'Multimodal NSFW' },
+  { id: 'mistralai/mistral-7b-instruct', name: 'Mistral 7B (NSFW)', provider: 'openrouter', free: true, uncensored: true, description: 'Strong reasoning, NSFW capable' },
+  { id: 'mistralai/mixtral-8x7b-instruct', name: 'Mixtral 8x7B (NSFW)', provider: 'openrouter', free: true, uncensored: true, description: 'MoE model, high quality NSFW' },
+  { id: 'gryphe/mythomax-l2-13b', name: 'MythoMax L2 13B (NSFW)', provider: 'openrouter', free: true, uncensored: true, description: 'Roleplay-optimized, uncensored' },
+  { id: 'undi95/toppy-m-7b', name: 'Toppy M 7B (NSFW)', provider: 'openrouter', free: true, uncensored: true, description: 'Creative writing, NSFW friendly' },
+  { id: 'cognitivecomputations/dolphin-2.9-llama3-8b', name: 'Dolphin 2.9 Llama3 8B (NSFW)', provider: 'openrouter', free: true, uncensored: true, description: 'Uncensored, instruction-tuned' },
+  { id: 'sao10k/l3-euryale-7b', name: 'Euryale 7B (NSFW)', provider: 'openrouter', free: true, uncensored: true, description: 'Roleplay & creative, NSFW' },
 
   // SFW MODELS (have content filters)
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (SFW)', provider: 'openrouter', free: true, uncensored: false, description: 'Fast, smart, SFW only' },
   { id: 'openai/gpt-3.5-turbo', name: 'GPT-3.5 Turbo (SFW)', provider: 'openrouter', free: true, uncensored: false, description: 'Classic, SFW only' },
   { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku (SFW)', provider: 'openrouter', free: true, uncensored: false, description: 'Fast, SFW only' },
+  { id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash (SFW)', provider: 'openrouter', free: true, uncensored: false, description: 'Fast multimodal, SFW' },
+  { id: 'microsoft/phi-3-mini-128k-instruct', name: 'Phi-3 Mini (SFW)', provider: 'openrouter', free: true, uncensored: false, description: 'Small, efficient, SFW' },
 ];
 
 const PROVIDERS: Record<string, LLMProvider> = {
