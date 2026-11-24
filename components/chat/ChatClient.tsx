@@ -156,6 +156,32 @@ export default function ChatClient({ characterId }: { characterId: string }) {
   const [contentPref, setContentPref] = useState<"sweet" | "steamy">("sweet");
   const [settingsNotice, setSettingsNotice] = useState<string | null>(null);
 
+  // Listen for age confirmation changes from other tabs/components (e.g., AgeGate)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "ggpt_age_18") {
+        setAgeConfirmed(e.newValue === "yes");
+      }
+    };
+    const onCustom = (e: CustomEvent) => {
+      if (e.detail?.confirmed) setAgeConfirmed(true);
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("ggpt-age-confirmed", onCustom as EventListener);
+    // Also poll as fallback for same-tab changes
+    const interval = setInterval(() => {
+      try {
+        const v = window.localStorage.getItem("ggpt_age_18") === "yes";
+        setAgeConfirmed((prev) => prev === v ? prev : v);
+      } catch { /* ignore */ }
+    }, 1000);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("ggpt-age-confirmed", onCustom as EventListener);
+      clearInterval(interval);
+    };
+  }, []);
+
   const [reportReason, setReportReason] = useState("AI reply felt off");
   const [reportDetails, setReportDetails] = useState("");
   const [reportState, setReportState] = useState<"idle" | "sending" | "done" | "error">("idle");

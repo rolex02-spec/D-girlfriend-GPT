@@ -2,7 +2,7 @@
  * /create — the Customise Studio.
  *
  * Two-pane: live illustrated preview (SVG, instant) on the left, editor on
- * the right. Optional AI portrait generation goes through /api/generate-portrait
+ * the right. Optional AI portrait generation goes through /api/generate-image
  * (server-side key, labelled output, rate-limited) — never from the client.
  *
  * Every custom companion is an adult by construction, fictional, and labelled
@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Sparkles, Wand2, Loader2, ShieldCheck, User, Palette, ScrollText,
-  Info, Check, ArrowRight, ChevronDown,
+  Info, Check, ArrowRight, ChevronDown, Zap,
 } from "lucide-react";
 import CompanionAvatar from "@/components/avatar/CompanionAvatar";
 import { ARCHETYPES, buildCustomCompanion, saveCustomCompanion, type Archetype } from "@/data/companions";
@@ -41,6 +41,33 @@ const BODY_TYPES = [
   { label: "Petite", value: "petite" }, { label: "Balanced", value: "balanced" },
   { label: "Athletic", value: "athletic" }, { label: "Curvy", value: "curvy" }, { label: "Tall & lean", value: "tall lean" },
 ];
+const BUST_SIZES = [
+  { label: "Flat", value: "flat" }, { label: "Small", value: "small" },
+  { label: "Medium", value: "medium" }, { label: "Large", value: "large" }, { label: "Very Large", value: "very_large" },
+];
+const BUST_SHAPES = [
+  { label: "Rounded", value: "rounded" }, { label: "Teardrop", value: "teardrop" },
+  { label: "Wide", value: "wide" }, { label: "Narrow", value: "narrow" }, { label: "Asymmetric", value: "asymmetric" },
+];
+const ASS_SIZES = [
+  { label: "Flat", value: "flat" }, { label: "Small", value: "small" },
+  { label: "Medium", value: "medium" }, { label: "Large", value: "large" }, { label: "Very Large", value: "very_large" },
+];
+const ASS_SHAPES = [
+  { label: "Round", value: "round" }, { label: "Heart", value: "heart" },
+  { label: "Square", value: "square" }, { label: "Wide", value: "wide" },
+];
+const WAIST_SIZES = [
+  { label: "Slim", value: "slim" }, { label: "Average", value: "average" }, { label: "Wide", value: "wide" },
+];
+const HIP_SIZES = [
+  { label: "Narrow", value: "narrow" }, { label: "Average", value: "average" },
+  { label: "Wide", value: "wide" }, { label: "Very Wide", value: "very_wide" },
+];
+const LEG_LENGTHS = [
+  { label: "Short", value: "short" }, { label: "Average", value: "average" },
+  { label: "Long", value: "long" }, { label: "Very Long", value: "very_long" },
+];
 const HUES = [
   { label: "Rose", value: 335 }, { label: "Wine", value: 285 }, { label: "Ember", value: 15 }, { label: "Marigold", value: 45 },
   { label: "Jade", value: 160 }, { label: "Teal", value: 192 }, { label: "Indigo", value: 250 }, { label: "Plum", value: 0 },
@@ -61,6 +88,13 @@ export default function CreatePage() {
   const [hairStyle, setHairStyle] = useState(1);
   const [eyeColor, setEyeColor] = useState("Brown");
   const [bodyType, setBodyType] = useState("balanced");
+  const [bustSize, setBustSize] = useState("medium");
+  const [bustShape, setBustShape] = useState("rounded");
+  const [assSize, setAssSize] = useState("medium");
+  const [assShape, setAssShape] = useState("round");
+  const [waistSize, setWaistSize] = useState("average");
+  const [hipSize, setHipSize] = useState("average");
+  const [legLength, setLegLength] = useState("long");
   const [hue, setHue] = useState(335);
 
   const [aiBusy, setAiBusy] = useState(false);
@@ -68,25 +102,60 @@ export default function CreatePage() {
   const [aiNotice, setAiNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generateFullBody, setGenerateFullBody] = useState(false);
 
   const ready = name.trim().length >= 2;
   const hairLabel = useMemo(() => HAIR_STYLES.find((h) => h.value === hairStyle)?.label.toLowerCase() ?? "wavy hair", [hairStyle]);
+
+  const buildPrompt = () => {
+    const skinLabel = SKIN_TONES.find((s) => s.value === skinTone)?.label.toLowerCase() ?? "warm";
+    const hairColorLabel = HAIR_COLORS.find((h) => h.value === hairColor)?.label.toLowerCase() ?? "dark";
+    const bustLabel = BUST_SIZES.find((b) => b.value === bustSize)?.label.toLowerCase() ?? "medium";
+    const bustShapeLabel = BUST_SHAPES.find((b) => b.value === bustShape)?.label.toLowerCase() ?? "rounded";
+    const assLabel = ASS_SIZES.find((a) => a.value === assSize)?.label.toLowerCase() ?? "medium";
+    const assShapeLabel = ASS_SHAPES.find((a) => a.value === assShape)?.label.toLowerCase() ?? "round";
+    const waistLabel = WAIST_SIZES.find((w) => w.value === waistSize)?.label.toLowerCase() ?? "average";
+    const hipLabel = HIP_SIZES.find((h) => h.value === hipSize)?.label.toLowerCase() ?? "average";
+    const legLabel = LEG_LENGTHS.find((l) => l.value === legLength)?.label.toLowerCase() ?? "long";
+
+    const parts = [
+      `full body portrait of ${name.trim() || "a fictional adult woman"}`,
+      `${skinLabel} skin`,
+      `${hairLabel} ${hairColorLabel} hair`,
+      `${eyeColor.toLowerCase()} eyes`,
+      `${bodyType} build`,
+      `${bustLabel} ${bustShapeLabel} breasts`,
+      `${waistLabel} waist`,
+      `${hipLabel} hips`,
+      `${assLabel} ${assShapeLabel} butt`,
+      `${legLabel} legs`,
+    ];
+
+    if (generateFullBody) {
+      parts.push("full body, standing pose, detailed, professional lighting");
+    } else {
+      parts.push("portrait, face focus, upper body, detailed");
+    }
+
+    parts.push("soft candlelight, elegant, tasteful, high detail, masterpiece, 8k uhd");
+
+    return parts.join(", ");
+  };
 
   const generatePortrait = async () => {
     setAiBusy(true);
     setAiNotice(null);
     setAiImage(null);
     try {
-      const skinLabel = SKIN_TONES.find((s) => s.value === skinTone)?.label.toLowerCase() ?? "warm";
-      const hairColorLabel = HAIR_COLORS.find((h) => h.value === hairColor)?.label.toLowerCase() ?? "dark";
-      const prompt = [
-        `portrait of ${name.trim() || "a fictional adult woman"}, ${skinLabel} skin, ${hairLabel} ${hairColorLabel} hair, ${eyeColor.toLowerCase()} eyes, ${bodyType} build`,
-        "face focus, soft candlelight, elegant, tasteful, high detail",
-      ].join(", ");
+      const prompt = buildPrompt();
       const res = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, style: "portrait", isNsfw: false }),
+        body: JSON.stringify({ 
+          prompt, 
+          style: generateFullBody ? "fullbody" : "portrait", 
+          isNsfw: false 
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -121,6 +190,15 @@ export default function CreatePage() {
         hue,
         portrait: aiImage ?? undefined,
       });
+      // Add the extra body attributes to the companion object
+      (companion as any).bustSize = bustSize;
+      (companion as any).bustShape = bustShape;
+      (companion as any).assSize = assSize;
+      (companion as any).assShape = assShape;
+      (companion as any).waistSize = waistSize;
+      (companion as any).hipSize = hipSize;
+      (companion as any).legLength = legLength;
+      (companion as any).bodyType = bodyType;
       saveCustomCompanion(companion);
       router.push(`/chat/${companion.id}`);
     } catch {
@@ -150,6 +228,16 @@ export default function CreatePage() {
     </button>
   );
 
+  const selectField = (label: string, value: string, options: { label: string; value: string }[], onChange: (v: string) => void) => (
+    <div className="relative">
+      <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-cream-dim">{label}</p>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="field h-12 w-full appearance-none rounded-xl px-4 pr-10 text-sm text-cream mt-1.5" aria-label={label}>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <ChevronDown size={16} className="pointer-events-none absolute right-3.5 top-[calc(50%+6px)] -translate-y-1/2 text-cream-dim" aria-hidden="true" />
+    </div>
+  );
+
   return (
     <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-24 sm:px-8">
       <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-16 h-80 w-[42rem] -translate-x-1/2 rounded-full bg-wine/25 blur-3xl" />
@@ -167,7 +255,7 @@ export default function CreatePage() {
         {/* ── Live preview ── */}
         <div className="lg:col-span-5">
           <div className="glass sticky top-24 overflow-hidden rounded-[2rem] p-5">
-            {sectionTitle(<User size={13} aria-hidden="true" />, "Live portrait — fictional")}
+            {sectionTitle(<User size={13} aria-hidden="true" />, "Live preview — fictional")}
             <div className="mt-4 overflow-hidden rounded-3xl border border-white/10">
               <div className="relative mx-auto aspect-[5/6] max-h-[430px] w-full">
                 <CompanionAvatar
@@ -201,10 +289,23 @@ export default function CreatePage() {
             <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-[11px] leading-5 text-cream-dim">
               <p className="flex items-center gap-1.5 font-semibold text-cream"><Info size={12} aria-hidden="true" /> What you&apos;re about to make</p>
               <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
-                <li>An illustrated (or AI-generated, if configured) portrait of an <strong>adult fictional character</strong>.</li>
+                <li>An illustrated (or AI-generated) portrait of an <strong>adult fictional character</strong>.</li>
                 <li>A persona: <strong>{archetype}</strong>, speaking <strong>{language}</strong>, with your described backstory.</li>
+                <li>Body: <strong>{bodyType}</strong>, {BUST_SIZES.find(b => b.value === bustSize)?.label} {BUST_SHAPES.find(b => b.value === bustShape)?.label} breasts, {WAIST_SIZES.find(w => w.value === waistSize)?.label} waist, {HIP_SIZES.find(h => h.value === hipSize)?.label} hips, {ASS_SIZES.find(a => a.value === assSize)?.label} {ASS_SHAPES.find(a => a.value === assShape)?.label} butt, {LEG_LENGTHS.find(l => l.value === legLength)?.label} legs.</li>
                 <li>Nobody real is depicted, imitated or identifiable.</li>
               </ul>
+            </div>
+
+            {/* Generate options */}
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-cream cursor-pointer hover:border-white/20">
+                <input type="checkbox" checked={generateFullBody} onChange={(e) => setGenerateFullBody(e.target.checked)} className="w-4 h-4 accent-rose" />
+                <span>Full body (not just portrait)</span>
+              </label>
+              <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-cream">
+                <Zap size={14} className="text-gold" aria-hidden="true" />
+                <span>Free model (Pollinations / Flux)</span>
+              </label>
             </div>
 
             {/* Optional AI portrait */}
@@ -214,7 +315,7 @@ export default function CreatePage() {
               className="btn-ghost mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-semibold text-cream disabled:opacity-60"
             >
               {aiBusy ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Wand2 size={14} aria-hidden="true" />}
-              {aiBusy ? "Rendering portrait…" : "Generate AI portrait (optional)"}
+              {aiBusy ? "Rendering portrait…" : "Generate AI image (uses all your settings above)"}
             </button>
             {aiNotice && (
               <p role="status" className="mt-2 rounded-xl border border-gold/20 bg-gold/5 p-2.5 text-[10px] leading-4 text-gold/90">{aiNotice}</p>
@@ -267,9 +368,9 @@ export default function CreatePage() {
             </div>
           </section>
 
-          {/* Appearance */}
+          {/* Appearance — expanded */}
           <section>
-            {sectionTitle(<Palette size={13} aria-hidden="true" />, "How they look — your taste, respectfully")}
+            {sectionTitle(<Palette size={13} aria-hidden="true" />, "How they look — every detail, respectfully")}
 
             <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-cream-dim">Skin tone</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
@@ -295,12 +396,59 @@ export default function CreatePage() {
                 <span className="h-8 w-8 rounded-full border border-white/10 bg-gradient-to-br from-[#3a2a1e] to-black" />))}
             </div>
 
-            <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-cream-dim">Silhouette <span className="normal-case text-cream-dim/60">(for generated artwork — no ranking, no judgement)</span></p>
+            {/* Body silhouette */}
+            <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-cream-dim">Body type <span className="normal-case text-cream-dim/60">(overall silhouette)</span></p>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {BODY_TYPES.map((t) => swatch(t.label, bodyType === t.value, () => setBodyType(t.value),
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-rose/25 to-wine/40 text-[10px] font-bold text-rose">{t.label[0]}</span>))}
             </div>
 
+            {/* Breast/boob customization */}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cream-dim">Breast size</p>
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {BUST_SIZES.map((t) => swatch(t.label, bustSize === t.value, () => setBustSize(t.value),
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-rose/15 to-wine/25 text-[10px] font-bold text-rose">{t.label[0]}</span>))}
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cream-dim">Breast shape</p>
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {BUST_SHAPES.map((t) => swatch(t.label, bustShape === t.value, () => setBustShape(t.value),
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-white/5 text-[10px] font-bold text-cream-dim">{t.label[0]}</span>))}
+                </div>
+              </div>
+            </div>
+
+            {/* Butt/ass customization */}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cream-dim">Butt size</p>
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {ASS_SIZES.map((t) => swatch(t.label, assSize === t.value, () => setAssSize(t.value),
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-amber/15 to-gold/25 text-[10px] font-bold text-gold">{t.label[0]}</span>))}
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cream-dim">Butt shape</p>
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {ASS_SHAPES.map((t) => swatch(t.label, assShape === t.value, () => setAssShape(t.value),
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-white/5 text-[10px] font-bold text-cream-dim">{t.label[0]}</span>))}
+                </div>
+              </div>
+            </div>
+
+            {/* Waist & Hips */}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {selectField("Waist", waistSize, WAIST_SIZES, setWaistSize)}
+              {selectField("Hips", hipSize, HIP_SIZES, setHipSize)}
+            </div>
+
+            {/* Leg length */}
+            {selectField("Leg length", legLength, LEG_LENGTHS, setLegLength)}
+
+            {/* Portrait ambience */}
             <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-cream-dim">Portrait ambience</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {HUES.map((t) => swatch(t.label, hue === t.value, () => setHue(t.value),

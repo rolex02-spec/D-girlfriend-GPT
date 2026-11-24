@@ -35,6 +35,8 @@ export default function AgeGate() {
   const confirm = () => {
     try {
       window.localStorage.setItem("ggpt_age_18", "yes");
+      // Dispatch custom event for same-tab listeners (e.g., ChatClient settings)
+      window.dispatchEvent(new CustomEvent("ggpt-age-confirmed", { detail: { confirmed: true } }));
     } catch {
       /* storage unavailable — still allow this session */
     }
