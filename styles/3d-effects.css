@@ -1,0 +1,300 @@
+/* 3D Effects and Modern UI Styles for GirlfriendGPT */
+
+/* Glassmorphism effects */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* 3D Card with realistic shadows */
+.card-3d {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.card-3d:hover {
+  transform: translateY(-8px) translateZ(20px) rotateX(5deg) rotateY(-5deg);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(217, 160, 90, 0.3),
+    0 0 80px rgba(217, 160, 90, 0.1);
+}
+
+/* Neon glow effects */
+.glow {
+  position: relative;
+  z-index: 1;
+}
+
+.glow::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  background: linear-gradient(45deg, 
+    rgba(217, 160, 90, 0.4), 
+    rgba(196, 104, 90, 0.2), 
+    rgba(217, 160, 90, 0.4)
+  );
+  filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.glow:hover::before {
+  opacity: 1;
+}
+
+/* Particle system container */
+.particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Floating animation for UI elements */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotateX(0deg) rotateY(0deg); }
+  25% { transform: translateY(-10px) rotateX(2deg) rotateY(-1deg); }
+  50% { transform: translateY(-5px) rotateX(-1deg) rotateY(1deg); }
+  75% { transform: translateY(-15px) rotateX(1deg) rotateY(-2deg); }
+}
+
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Pulse animation */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.02); }
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Shimmer effect */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, 
+    rgba(236, 229, 216, 0.1) 0%, 
+    rgba(236, 229, 216, 0.3) 50%, 
+    rgba(236, 229, 216, 0.1) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* Morphing gradient background */
+.gradient-bg {
+  background: linear-gradient(45deg, 
+    #161312, 
+    #1e1b19, 
+    #262220, 
+    #1e1b19
+  );
+  background-size: 400% 400%;
+  animation: gradient-bg 15s ease infinite;
+}
+
+@keyframes gradient-bg {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 50% 50%; }
+  50% { background-position: 100% 50%; }
+  75% { background-position: 50% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 3D Text effect */
+.text-3d {
+  background: linear-gradient(45deg, #D9A05B, #C4685A);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Morphing button */
+.btn-morph {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.btn-morph::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, 
+    rgba(217, 160, 90, 0.2), 
+    rgba(196, 104, 90, 0.1)
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-morph:hover::before {
+  opacity: 1;
+}
+
+.btn-morph:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* 3D Avatar container */
+.avatar-3d {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease;
+}
+
+.avatar-3d:hover {
+  transform: scale(1.1) rotateY(10deg);
+}
+
+.avatar-3d::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(217, 160, 90, 0.3);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: border-color 0.3s ease;
+}
+
+/* Neon border */
+.border-neon {
+  border: 2px solid transparent;
+  background: linear-gradient(45deg, #D9A05B, #C4685A) as background;
+  background-size: 200% 200%;
+  border-radius: 12px;
+  animation: border-glow 3s linear infinite;
+}
+
+@keyframes border-glow {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
+/* Staggered animation delays */
+.delay-1 { animation-delay: 0.05s; }
+.delay-2 { animation-delay: 0.1s; }
+.delay-3 { animation-delay: 0.15s; }
+.delay-4 { animation-delay: 0.2s; }
+.delay-5 { animation-delay: 0.25s; }
+.delay-6 { animation-delay: 0.3s; }
+.delay-7 { animation-delay: 0.35s; }
+.delay-8 { animation-delay: 0.4s; }
+
+/* 3D scene container */
+.scene-3d {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 30% 30%, rgba(217, 160, 90, 0.1) 0%, transparent 70%);
+}
+
+/* Lens flare effect */
+.lens-flare {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, 
+    rgba(217, 160, 90, 0.4) 0%, 
+    transparent 70%
+  );
+  border-radius: 50%;
+  filter: blur(20px);
+  animation: flare 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes flare {
+  0%, 100% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+  25% { opacity: 0.6; transform: scale(1) rotate(90deg); }
+  50% { opacity: 0.3; transform: scale(0.8) rotate(180deg); }
+  75% { opacity: 0.5; transform: scale(1.2) rotate(270deg); }
+}
+
+/* 3D interaction cursor */
+.interactive-3d {
+  cursor: grab;
+  transition: cursor 0.2s ease;
+}
+
+.interactive-3d:active {
+  cursor: grabbing;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(22, 19, 18, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, #D9A05B, #C4685A);
+  border-radius: 4px;
+  transition: opacity 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  opacity: 0.8;
+}
+
+/* Focus ring enhancement */
+.focus-visible {
+  outline: 2px solid #D9A05B;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 3D transform helpers for animation */
+.transform-3d-enter {
+  transform: translateZ(-50px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.transform-3d-enter-active {
+  transform: translateZ(0);
+  opacity: 1;
+}

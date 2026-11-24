@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  email         String    @unique
+  password      String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  conversations Conversation[]
+  memories      Memory[]
+}
+
+model Conversation {
+  id          String    @id @default(uuid())
+  userId      String
+  characterId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id])
+  messages    Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           String       // "user" | "assistant" | "system"
+  content        String
+  emotion        String?      // happy, sad, angry, flirty, etc.
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+}
+
+model Memory {
+  id          String   @id @default(uuid())
+  userId      String
+  characterId String
+  key         String   // e.g. "favorite_food", "first_date", "birthday"
+  value       String
+  importance  Int      @default(5) // 1-10
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Character {
+  id            String   @id
+  name          String
+  age           Int
+  country       String
+  language      String
+  personality   String  // JSON string of PersonalityTraits
+  appearance    String  // JSON string of Appearance
+  voice         String  // JSON string of VoiceConfig
+  backstory     String
+  nsfwAllowed   Boolean @default(false)
+  createdAt     DateTime @default(now())
+}
