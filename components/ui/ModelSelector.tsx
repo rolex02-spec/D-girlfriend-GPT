@@ -37,7 +37,7 @@ export default function ModelSelector() {
   const currentModel = allModels.find((m) => m.id === selectedModel);
 
   return (
-    <div className="relative hidden sm:block" ref={panelRef}>
+    <div className="relative" ref={panelRef}>
       <button
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
