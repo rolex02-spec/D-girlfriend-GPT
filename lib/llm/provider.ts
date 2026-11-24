@@ -54,13 +54,117 @@ export const availableModels: ModelInfo[] = [
   { id: 'microsoft/phi-3-mini-128k-instruct', name: 'Phi-3 Mini (SFW)', provider: 'openrouter', free: true, uncensored: false, description: 'Small, efficient, SFW' },
 ];
 
+// ============================================================
+// MULTI-KEY ROTATION SYSTEM (OpenRouter)
+// ============================================================
+
+interface ApiKeyState {
+  key: string;
+  lastUsed: number;
+  failures: number;
+  exhausted: boolean;
+  exhaustedAt?: number;
+}
+
+class ApiKeyRotator {
+  private keys: ApiKeyState[] = [];
+  private currentIndex = 0;
+
+  constructor() {
+    this.loadKeys();
+  }
+
+  private loadKeys() {
+    const envKeys = [
+      process.env.OPENROUTER_API_KEY_1,
+      process.env.OPENROUTER_API_KEY_2,
+      process.env.OPENROUTER_API_KEY_3,
+      process.env.OPENROUTER_API_KEY,
+    ].filter(Boolean);
+
+    this.keys = envKeys.map((key, idx) => ({
+      key: key!,
+      lastUsed: 0,
+      failures: 0,
+      exhausted: false,
+    }));
+
+    console.log(`[KeyRotator] Loaded ${this.keys.length} OpenRouter API keys`);
+  }
+
+  getCurrentKey(): string {
+    if (this.keys.length === 0) return '';
+    return this.keys[this.currentIndex].key;
+  }
+
+  markFailure(statusCode: number): boolean {
+    const current = this.keys[this.currentIndex];
+    current.failures++;
+    current.lastUsed = Date.now();
+
+    // Mark exhausted on rate limit (429) or auth failure (401)
+    if (statusCode === 429 || statusCode === 401) {
+      current.exhausted = true;
+      current.exhaustedAt = Date.now();
+      console.log(`[KeyRotator] Key ${this.currentIndex + 1} exhausted (status ${statusCode}), rotating...`);
+      return this.rotateToNext();
+    }
+    return true; // Stay on current key for other errors
+  }
+
+  markSuccess(): void {
+    const current = this.keys[this.currentIndex];
+    current.failures = 0; // Reset failures on success
+  }
+
+  private rotateToNext(): boolean {
+    const startIndex = this.currentIndex;
+    do {
+      this.currentIndex = (this.currentIndex + 1) % this.keys.length;
+      if (!this.keys[this.currentIndex].exhausted) {
+        console.log(`[KeyRotator] Switched to key ${this.currentIndex + 1}`);
+        return true;
+      }
+    } while (this.currentIndex !== startIndex);
+
+    console.error('[KeyRotator] ALL KEYS EXHAUSTED!');
+    return false;
+  }
+
+  getStatus(): { total: number; current: number; exhausted: number } {
+    return {
+      total: this.keys.length,
+      current: this.currentIndex + 1,
+      exhausted: this.keys.filter(k => k.exhausted).length,
+    };
+  }
+
+  // Reset exhausted keys after cooldown (e.g., 1 hour)
+  resetExhaustedIfCooldown(cooldownMs = 3600000): void {
+    const now = Date.now();
+    this.keys.forEach(key => {
+      if (key.exhausted && key.exhaustedAt && now - key.exhaustedAt > cooldownMs) {
+        key.exhausted = false;
+        key.failures = 0;
+        console.log(`[KeyRotator] Key reset after cooldown`);
+      }
+    });
+  }
+}
+
+// Singleton instance
+const keyRotator = new ApiKeyRotator();
+
 const PROVIDERS: Record<string, LLMProvider> = {
   openrouter: {
     name: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
-    get apiKey() { return process.env.OPENROUTER_API_KEY || ''; },
+    get apiKey() { return keyRotator.getCurrentKey(); },
   },
 };
+
+// Export for testing/monitoring
+export { keyRotator };
 
 // ============================================================
 // CHARACTER DATABASE FOR RAG
@@ -583,22 +687,21 @@ async function callLLM(
   if (!providerConfig) {
     throw new LLMProviderError(`Provider ${provider} is not configured`);
   }
-  if (!providerConfig.apiKey) {
-    throw new LLMProviderError(
-      `${providerConfig.name} API key is missing. Configure OPENROUTER_API_KEY.`
-    );
-  }
 
-  const headers: Record<string, string> = {
+  // Build initial headers
+  const buildHeaders = (apiKey: string): Record<string, string> => ({
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${providerConfig.apiKey}`,
+    'Authorization': `Bearer ${apiKey}`,
     'HTTP-Referer': 'https://girlfriend-gpt.app',
     'X-Title': 'GirlfriendGPT',
-  };
+  });
+
+  let currentKey = providerConfig.apiKey;
+  let headers = buildHeaders(currentKey);
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      console.log(`[Attempt ${attempt + 1}] Calling ${provider} model: ${model}`);
+      console.log(`[Attempt ${attempt + 1}] Calling ${provider} model: ${model} (key: ${keyRotator.getStatus().current})`);
 
       const response = await fetch(`${providerConfig.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -614,13 +717,37 @@ async function callLLM(
 
       if (!response.ok) {
         console.error(`[Attempt ${attempt + 1}] ${provider} error ${response.status}`);
+        
+        // Check if we should rotate key
+        const shouldRotate = keyRotator.markFailure(response.status);
+        
+        if (shouldRotate && response.status === 429) {
+          // Rate limited - try next key immediately
+          currentKey = providerConfig.apiKey;
+          if (!currentKey) {
+            throw new LLMProviderError('All API keys exhausted', 429, false);
+          }
+          headers = buildHeaders(currentKey);
+          console.log(`[KeyRotator] Retrying with new key (${keyRotator.getStatus().current})`);
+          continue; // Retry same attempt with new key
+        } else if (shouldRotate && response.status === 401) {
+          // Auth failed - rotate and retry
+          currentKey = providerConfig.apiKey;
+          if (!currentKey) {
+            throw new LLMProviderError('All API keys exhausted (auth)', 401, false);
+          }
+          headers = buildHeaders(currentKey);
+          console.log(`[KeyRotator] Auth failed, retrying with new key (${keyRotator.getStatus().current})`);
+          continue;
+        }
+
         const retryable =
           response.status === 408 ||
           response.status === 429 ||
           response.status >= 500;
         const reason =
           response.status === 401
-            ? ' (authentication failed; check OPENROUTER_API_KEY)'
+            ? ' (authentication failed; all keys invalid)'
             : response.status === 403
               ? ' (model access denied)'
               : '';
@@ -631,6 +758,9 @@ async function callLLM(
         );
       }
 
+      // Success - mark key as working
+      keyRotator.markSuccess();
+      
       const data = await response.json();
       const content = data.choices[0]?.message?.content || '';
 
@@ -638,7 +768,7 @@ async function callLLM(
         throw new Error('Empty response from LLM');
       }
 
-      console.log(`[Success] Response length: ${content.length}`);
+      console.log(`[Success] Response length: ${content.length} (key: ${keyRotator.getStatus().current})`);
       return content;
     } catch (error) {
       if (
@@ -651,6 +781,8 @@ async function callLLM(
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
+  
+  throw new LLMProviderError('Max retries exceeded', 500, false);
 
   throw new Error('All retries failed');
 }
