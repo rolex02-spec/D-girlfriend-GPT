@@ -257,17 +257,12 @@ export default function ChatClient({ characterId }: { characterId: string }) {
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages.length, sending]);
 
-  /* ── Voice: speak replies aloud through the Edge TTS endpoint ────── */
+  /* ── Voice: speak replies aloud via browser SpeechSynthesis ────── */
   const speak = useCallback(
     async (text: string) => {
       const config: VoiceConfig = character?.voice ?? DEFAULT_VOICE;
       try {
-        const buf = await textToSpeech(text, config);
-        if (!buf) return;
-        const url = URL.createObjectURL(new Blob([buf], { type: "audio/mp3" }));
-        const audio = new Audio(url);
-        audio.onended = () => URL.revokeObjectURL(url);
-        await audio.play().catch(() => {});
+        await textToSpeech(text, config);
       } catch {
         /* voice is a bonus — never block the conversation on it */
       }
