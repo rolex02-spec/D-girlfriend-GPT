@@ -41,18 +41,18 @@ export const THEMES: ThemeConfig[] = [
 ];
 
 export const FONTS = [
-  { name: 'Fraunces + Inter (Default)', display: '"Fraunces", Georgia, serif', sans: '"Inter", system-ui, sans-serif' },
-  { name: 'Playfair Display + Source Sans', display: '"Playfair Display", Georgia, serif', sans: '"Source Sans Pro", system-ui, sans-serif' },
-  { name: 'Merriweather + Open Sans', display: '"Merriweather", Georgia, serif', sans: '"Open Sans", system-ui, sans-serif' },
-  { name: 'Cormorant Garamond + Lato', display: '"Cormorant Garamond", Georgia, serif', sans: '"Lato", system-ui, sans-serif' },
-  { name: 'Libre Baskerville + Montserrat', display: '"Libre Baskerville", Georgia, serif', sans: '"Montserrat", system-ui, sans-serif' },
-  { name: 'Spectral + Roboto', display: '"Spectral", Georgia, serif', sans: '"Roboto", system-ui, sans-serif' },
-  { name: 'DM Serif Display + DM Sans', display: '"DM Serif Display", Georgia, serif', sans: '"DM Sans", system-ui, sans-serif' },
-  { name: 'IBM Plex Serif + IBM Plex Sans', display: '"IBM Plex Serif", Georgia, serif', sans: '"IBM Plex Sans", system-ui, sans-serif' },
-  { name: 'Source Serif Pro + Source Sans', display: '"Source Serif Pro", Georgia, serif', sans: '"Source Sans Pro", system-ui, sans-serif' },
-  { name: 'Noto Serif + Noto Sans', display: '"Noto Serif", Georgia, serif', sans: '"Noto Sans", system-ui, sans-serif' },
-  { name: 'Georgia + Arial (System)', display: 'Georgia, serif', sans: 'Arial, system-ui, sans-serif' },
-  { name: 'Times + Helvetica (System)', display: '"Times New Roman", serif', sans: 'Helvetica, system-ui, sans-serif' },
+  { name: 'Fraunces + Inter (Default)', display: '"Fraunces", Georgia, serif', sans: '"Inter", system-ui, sans-serif', google: 'Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700|Inter:wght@400;450;500;600;700' },
+  { name: 'Playfair Display + Source Sans', display: '"Playfair Display", Georgia, serif', sans: '"Source Sans Pro", system-ui, sans-serif', google: 'Playfair Display:wght@400;500;600;700|Source Sans Pro:wght@400;500;600;700' },
+  { name: 'Merriweather + Open Sans', display: '"Merriweather", Georgia, serif', sans: '"Open Sans", system-ui, sans-serif', google: 'Merriweather:wght@400;700|Open Sans:wght@400;500;600;700' },
+  { name: 'Cormorant Garamond + Lato', display: '"Cormorant Garamond", Georgia, serif', sans: '"Lato", system-ui, sans-serif', google: 'Cormorant Garamond:wght@400;500;600;700|Lato:wght@400;500;600;700' },
+  { name: 'Libre Baskerville + Montserrat', display: '"Libre Baskerville", Georgia, serif', sans: '"Montserrat", system-ui, sans-serif', google: 'Libre Baskerville:wght@400;700|Montserrat:wght@400;500;600;700' },
+  { name: 'Spectral + Roboto', display: '"Spectral", Georgia, serif', sans: '"Roboto", system-ui, sans-serif', google: 'Spectral:wght@400;500;600;700|Roboto:wght@400;500;600;700' },
+  { name: 'DM Serif Display + DM Sans', display: '"DM Serif Display", Georgia, serif', sans: '"DM Sans", system-ui, sans-serif', google: 'DM Serif Display:wght@400|DM Sans:wght@400;500;600;700' },
+  { name: 'IBM Plex Serif + IBM Plex Sans', display: '"IBM Plex Serif", Georgia, serif', sans: '"IBM Plex Sans", system-ui, sans-serif', google: 'IBM Plex Serif:wght@400;500;600;700|IBM Plex Sans:wght@400;500;600;700' },
+  { name: 'Source Serif Pro + Source Sans', display: '"Source Serif Pro", Georgia, serif', sans: '"Source Sans Pro", system-ui, sans-serif', google: 'Source Serif Pro:wght@400;500;600;700|Source Sans Pro:wght@400;500;600;700' },
+  { name: 'Noto Serif + Noto Sans', display: '"Noto Serif", Georgia, serif', sans: '"Noto Sans", system-ui, sans-serif', google: 'Noto Serif:wght@400;500;600;700|Noto Sans:wght@400;500;600;700' },
+  { name: 'Georgia + Arial (System)', display: 'Georgia, serif', sans: 'Arial, system-ui, sans-serif', google: '' },
+  { name: 'Times + Helvetica (System)', display: '"Times New Roman", serif', sans: 'Helvetica, system-ui, sans-serif', google: '' },
 ];
 
 interface SettingsState {
@@ -82,7 +82,13 @@ interface SettingsState {
   selectedModel: string;
   setSelectedModel: (model: string) => void;
   
-  // Save all settings
+  // Apply functions
+  applyTheme: (index: number) => void;
+  applyFont: (index: number) => void;
+  applyDarkMode: (enabled: boolean) => void;
+  applyAll: () => void;
+  
+  // Save
   saveAll: () => void;
   
   // Reset to defaults
@@ -99,25 +105,121 @@ const defaultSettings = {
   selectedModel: 'meta-llama/llama-3.1-8b-instruct',
 };
 
+/** Apply theme CSS variables to :root */
+function applyThemeToDocument(theme: ThemeConfig) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  root.style.setProperty('--color-ink', theme.primary);
+  root.style.setProperty('--color-ink-2', theme.secondary);
+  root.style.setProperty('--color-rose', theme.accent);
+  root.style.setProperty('--color-rose-deep', theme.accent);
+  root.style.setProperty('--color-gold', theme.accent);
+  root.style.setProperty('--color-wine', theme.border);
+  root.style.setProperty('--color-cream', theme.text);
+  root.style.setProperty('--color-cream-dim', theme.textDim);
+}
+
+/** Apply font by injecting Google Fonts link and setting CSS variables */
+function applyFontToDocument(font: typeof FONTS[0]) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  root.style.setProperty('--font-display', font.display);
+  root.style.setProperty('--font-sans', font.sans);
+  
+  // Remove old Google Fonts link
+  const oldLink = document.getElementById('ggpt-google-fonts');
+  if (oldLink) oldLink.remove();
+  
+  if (font.google) {
+    const link = document.createElement('link');
+    link.id = 'ggpt-google-fonts';
+    link.rel = 'preconnect';
+    link.href = 'https://fonts.googleapis.com';
+    document.head.appendChild(link);
+    
+    const link2 = document.createElement('link');
+    link2.id = 'ggpt-google-fonts-2';
+    link2.rel = 'preconnect';
+    link2.href = 'https://fonts.gstatic.com';
+    link2.crossOrigin = 'anonymous';
+    document.head.appendChild(link2);
+    
+    const link3 = document.createElement('link');
+    link3.id = 'ggpt-google-fonts-css';
+    link3.rel = 'stylesheet';
+    link3.href = `https://fonts.googleapis.com/css2?family=${font.google.replace(/\|/g, '&family=')}&display=swap`;
+    document.head.appendChild(link3);
+  }
+}
+
+/** Apply dark/light mode */
+function applyDarkModeToDocument(enabled: boolean) {
+  if (typeof document === 'undefined') return;
+  if (enabled) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set, get) => ({
       ...defaultSettings,
       
-      setThemeIndex: (index) => set({ themeIndex: index }),
-      setFontIndex: (index) => set({ fontIndex: index }),
-      setDarkMode: (enabled) => set({ darkMode: enabled }),
+      setThemeIndex: (index) => {
+        set({ themeIndex: index });
+        // Apply immediately
+        get().applyTheme(index);
+      },
+      
+      setFontIndex: (index) => {
+        set({ fontIndex: index });
+        get().applyFont(index);
+      },
+      
+      setDarkMode: (enabled) => {
+        set({ darkMode: enabled });
+        get().applyDarkMode(enabled);
+      },
+      
       setAdultMode: (enabled) => set({ adultMode: enabled }),
       setLanguage: (lang) => set({ language: lang }),
       setSelectedProvider: (provider) => set({ selectedProvider: provider }),
       setSelectedModel: (model) => set({ selectedModel: model }),
+      
+      applyTheme: (index) => {
+        const theme = THEMES[index] ?? THEMES[0];
+        applyThemeToDocument(theme);
+      },
+      
+      applyFont: (index) => {
+        const font = FONTS[index] ?? FONTS[0];
+        applyFontToDocument(font);
+      },
+      
+      applyDarkMode: (enabled) => {
+        applyDarkModeToDocument(enabled);
+      },
+      
+      applyAll: () => {
+        get().applyTheme(get().themeIndex);
+        get().applyFont(get().fontIndex);
+        get().applyDarkMode(get().darkMode);
+      },
       
       saveAll: () => {
         // Settings are auto-persisted via zustand persist middleware
         console.log('Settings saved:', get());
       },
       
-      resetToDefaults: () => set(defaultSettings),
+      resetToDefaults: () => {
+        set(defaultSettings);
+        // Apply defaults
+        applyThemeToDocument(THEMES[0]);
+        applyFontToDocument(FONTS[0]);
+        applyDarkModeToDocument(true);
+      },
     }),
     {
       name: 'ggpt_settings',

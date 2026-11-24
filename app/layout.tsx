@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/site/Navbar";
 import Footer from "@/components/site/Footer";
 import AgeGate from "@/components/site/AgeGate";
+import { SettingsApplier } from "@/components/settings/SettingsApplier";
 
 export const metadata: Metadata = {
   title: {
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           Skip to content
         </a>
+        <SettingsApplier />
         <AgeGate />
         <Navbar />
         <main id="main-content">{children}</main>
